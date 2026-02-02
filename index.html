@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Singularity Clicker</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://adsgram.ai/sdk/v1/adsgram-sdk.js"></script>
+    <style>
+        body { margin: 0; background: radial-gradient(circle at center, #080808, #000); color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; user-select: none; }
+        #leaderboard { position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 12px; font-size: 11px; z-index: 20; border: 1px solid rgba(0, 242, 255, 0.1); }
+        .ads-container { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 20; }
+        .buy-btn { padding: 8px 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 11px; color: white; }
+        .btn-mult { background: linear-gradient(45deg, #00f2ff, #0066ff); }
+        .btn-auto { background: linear-gradient(45deg, #a200ff, #ff00d4); }
+        .timer-text { font-size: 10px; color: #ff9d00; display: none; }
+        #ui { margin-top: 100px; text-align: center; }
+        #energy { font-size: 60px; color: #00f2ff; text-shadow: 0 0 20px #00f2ff; font-weight: bold; }
+        #game { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; }
+        #shape { width: 100px; height: 100px; background: #00f2ff; border-radius: 50%; box-shadow: 0 0 30px #00f2ff; transition: all 0.3s, transform 0.1s; }
+        #shape.line { width: 280px; height: 15px; border-radius: 10px; }
+        #shape.glow-mult { box-shadow: 0 0 40px #00f2ff, 0 0 70px #0066ff; border: 2px solid #fff; }
+        #shape.glow-auto { box-shadow: 0 0 40px #a200ff, 0 0 70px #ff00d4; border: 2px solid #fff; }
+        #shape.glow-both { box-shadow: 0 0 50px #fff, 0 0 100px #00f2ff; border: 3px solid #fff; }
+        #math-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        #math-box { background: #111; padding: 40px; border-radius: 25px; border: 2px solid #ff9d00; text-align: center; }
+        .plus { position: absolute; color: #00f2ff; font-weight: bold; font-size: 28px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="leaderboard"><strong>TOP 5</strong><div id="list">...</div></div>
+    <div class="ads-container">
+        <button class="buy-btn btn-mult" onclick="showAd('multiplier')">КЛИК x2 📺</button>
+        <div id="timer-mult" class="timer-text">x2: 05:00</div>
+        <button class="buy-btn btn-auto" onclick="showAd('auto')">АВТОКЛИК 📺</button>
+        <div id="timer-auto" class="timer-text">🤖: 01:00</div>
+    </div>
+    <div id="math-overlay"><div id="math-box"><h2 style="color:#ff9d00">QUANTUM QUIZ</h2><div id="math-question" style="font-size:24px; margin:20px 0"></div><input type="number" id="math-input" style="padding:10px; width:100px; text-align:center"><br><br><button class="buy-btn" style="background:#ff9d00" onclick="checkMathAnswer()">ОТВЕТИТЬ</button></div></div>
+    <div id="ui"><div id="energy">0</div><div id="status">POINT</div></div>
+    <div id="game"><div id="shape" onclick="tap()"></div></div>
+<script>
+    const tg = window.Telegram.WebApp; tg.ready(); tg.expand();
+    const AdController = window.Adsgram.init({ blockId: "YOUR_BLOCK_ID" });
+    const firebaseConfig = { databaseURL: "https://ВАША_ССЫЛКА.firebaseio.com/" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let energy = 0, level = 0, isEvolving = false, clickMultiplier = 1, isAutoClickActive = false;
+    let multEndTime = 0, autoEndTime = 0, multTimer, autoTimer, currentMathAnswer = 0;
+    const energyEl = document.getElementById("energy"), shape = document.getElementById("shape");
+    function tap() { if (isEvolving) return; let gain = (level === 0 ? 1 : 5) * clickMultiplier; energy += gain; energyEl.textContent = Math.floor(energy); shape.style.transform = "scale(0.85)"; setTimeout(()=>shape.style.transform="scale(1)", 50); tg.HapticFeedback.impactOccurred("light"); showPlus(gain); if(energy >= 1000 && level === 0) evolveToLine(); }
+    function showMathQuiz() { const n1 = Math.floor(Math.random()*90)+10, n2 = Math.floor(Math.random()*90)+10, isP = Math.random()>0.5; currentMathAnswer = isP ? (n1+n2) : (n1-n2); document.getElementById("math-question").textContent = `${n1} ${isP?'+':'-'} ${n2} = ?`; document.getElementById("math-overlay").style.display = "flex"; }
+    function checkMathAnswer() { const val = parseInt(document.getElementById("math-input").value); if(val === currentMathAnswer) { energy += 100; energyEl.textContent = Math.floor(energy); showPlus(100); tg.showAlert("Верно! +100"); save(); } document.getElementById("math-overlay").style.display = "none"; }
+    setInterval(showMathQuiz, 1800000);
+    function showAd(t) { AdController.show().then(() => { const now = Date.now(); if(t === 'multiplier') { multEndTime = now + 300000; startMultTimer(); } else { autoEndTime = now + 60000; startAutoTimer(); } save(); }); }
+    function startMultTimer() { if(multTimer) clearInterval(multTimer); multTimer = setInterval(() => { let r = Math.round((multEndTime - Date.now())/1000); if(r <= 0) { clickMultiplier = 1; document.getElementById("timer-mult").style.display = "none"; clearInterval(multTimer); } else { clickMultiplier = 2; document.getElementById("timer-mult").style.display = "block"; document.getElementById("timer-mult").textContent = `x2: ${r}s`; } updateVisuals(); }, 1000); }
+    function startAutoTimer() { if(autoTimer) clearInterval(autoTimer); autoTimer = setInterval(() => { let r = Math.round((autoEndTime - Date.now())/1000); if(r <= 0) { isAutoClickActive = false; document.getElementById("timer-auto").style.display = "none"; clearInterval(autoTimer); } else { isAutoClickActive = true; document.getElementById("timer-auto").style.display = "block"; document.getElementById("timer-auto").textContent = `🤖: ${r}s`; } updateVisuals(); }, 1000); }
+    function updateVisuals() { shape.classList.remove("glow-mult", "glow-auto", "glow-both"); if(clickMultiplier>1 && isAutoClickActive) shape.classList.add("glow-both"); else if(clickMultiplier>1) shape.classList.add("glow-mult"); else if(isAutoClickActive) shape.classList.add("glow-auto"); }
+    setInterval(() => { if(isAutoClickActive && !isEvolving) { energy += 1; energyEl.textContent = Math.floor(energy); if(energy >= 1000 && level === 0) evolveToLine(); }}, 1000);
+    function evolveToLine() { isEvolving = true; level = 1; shape.classList.add("line"); document.getElementById("status").textContent = "LINE"; save(); setTimeout(()=>isEvolving=false, 500); }
+    function showPlus(v) { const p = document.createElement("div"); p.className = "plus"; p.textContent = "+"+v; p.style.left = "50%"; p.style.top = "40%"; document.body.appendChild(p); p.animate([{opacity:1, transform:"translateY(0)"}, {opacity:0, transform:"translateY(-100px)"}], 800); setTimeout(()=>p.remove(), 800); }
+    function save() { const u = tg.initDataUnsafe?.user; if(u) db.ref('users/'+u.id).update({ n: u.first_name, s: Math.floor(energy), l: level, me: multEndTime, ae: autoEndTime }); }
+    function load() { const u = tg.initDataUnsafe?.user; if(!u) return; db.ref('users/'+u.id).once('value', s => { const d = s.val(); if(d) { energy = d.s || 0; level = d.l || 0; energyEl.textContent = energy; if(level === 1) shape.classList.add("line"); const now = Date.now(); if(d.me > now) { multEndTime = d.me; startMultTimer(); } if(d.ae > now) { autoEndTime = d.ae; startAutoTimer(); } } }); }
+    load(); setInterval(save, 10000);
+</script>
+</body>
+</html>
