@@ -5,71 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Singularity Clicker</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://adsgram.ai/sdk/v1/adsgram-sdk.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://adsgram.ai/sdk/v1/adsgram-sdk.js"></script>
     <style>
         body { 
-            margin: 0; 
-            background: radial-gradient(circle at center, #080808, #000); 
-            color: white; 
-            font-family: 'Segoe UI', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            height: 100vh; 
-            overflow: hidden; 
-            user-select: none; 
-            touch-action: manipulation;
+            margin: 0; background: radial-gradient(circle at center, #080808, #000); 
+            color: white; font-family: 'Segoe UI', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; 
+            height: 100vh; overflow: hidden; user-select: none; touch-action: manipulation;
         }
         
+        /* Слой UI (над игрой, но пропускает клики) */
         #leaderboard { 
             position: absolute; top: 10px; left: 10px; 
-            background: rgba(255, 255, 255, 0.05); 
-            padding: 10px; border-radius: 12px; 
-            font-size: 11px; z-index: 30; 
-            border: 1px solid rgba(0, 242, 255, 0.1); 
-            pointer-events: none; /* Пропускает клики сквозь фон */
+            background: rgba(255, 255, 255, 0.05); padding: 10px; 
+            border-radius: 12px; font-size: 11px; z-index: 30; 
+            border: 1px solid rgba(0, 242, 255, 0.1); pointer-events: none; 
         }
         
         .ads-container { 
             position: absolute; top: 10px; right: 10px; 
-            display: flex; flex-direction: column; 
-            align-items: flex-end; gap: 8px; z-index: 30; 
+            display: flex; flex-direction: column; align-items: flex-end; 
+            gap: 8px; z-index: 30; 
         }
 
         .buy-btn { 
-            padding: 8px 12px; border: none; border-radius: 10px; 
+            padding: 10px 14px; border: none; border-radius: 10px; 
             font-weight: bold; cursor: pointer; font-size: 11px; 
             color: white; transition: 0.3s; pointer-events: auto;
         }
 
         .btn-mult { background: linear-gradient(45deg, #00f2ff, #0066ff); }
         .btn-auto { background: linear-gradient(45deg, #a200ff, #ff00d4); }
-        
         .timer-text { font-size: 10px; color: #ff9d00; display: none; margin-top: -2px; }
 
-        #ui { 
-            margin-top: 80px; text-align: center; 
-            z-index: 20; pointer-events: none; 
-        }
-
+        #ui { margin-top: 80px; text-align: center; z-index: 20; pointer-events: none; }
         #energy { font-size: 60px; color: #00f2ff; text-shadow: 0 0 20px #00f2ff; font-weight: bold; }
-        #status { font-size: 14px; letter-spacing: 2px; opacity: 0.7; }
 
+        /* Игровое поле (на весь экран) */
         #game { 
-            flex: 1; display: flex; 
-            justify-content: center; align-items: center; 
-            width: 100%; z-index: 10; 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: flex; justify-content: center; align-items: center; z-index: 10; 
         }
 
         #shape { 
-            width: 150px; height: 150px; 
-            background: #00f2ff; border-radius: 50%; 
-            box-shadow: 0 0 30px #00f2ff; 
-            transition: transform 0.05s; 
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
+            width: 140px; height: 140px; background: #00f2ff; border-radius: 50%; 
+            box-shadow: 0 0 30px #00f2ff; transition: transform 0.05s; 
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
 
         #shape.line { width: 280px; height: 15px; border-radius: 10px; }
@@ -77,20 +60,15 @@
         #shape.glow-auto { box-shadow: 0 0 40px #a200ff, 0 0 70px #ff00d4; border: 2px solid #fff; }
         #shape.glow-both { box-shadow: 0 0 50px #fff, 0 0 100px #00f2ff; border: 3px solid #fff; }
 
+        /* Оверлей квиза */
         #math-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.95); display: none; 
-            flex-direction: column; align-items: center; 
-            justify-content: center; z-index: 100; 
+            flex-direction: column; align-items: center; justify-content: center; z-index: 100; 
         }
-
         #math-box { background: #111; padding: 40px; border-radius: 25px; border: 2px solid #ff9d00; text-align: center; }
         
-        .plus { 
-            position: absolute; color: #00f2ff; 
-            font-weight: bold; font-size: 28px; 
-            pointer-events: none; z-index: 50;
-        }
+        .plus { position: absolute; color: #00f2ff; font-weight: bold; font-size: 28px; pointer-events: none; z-index: 50; }
     </style>
 </head>
 <body>
@@ -126,13 +104,21 @@
     tg.ready(); 
     tg.expand();
 
-    const AdController = window.Adsgram?.init({ blockId: "22216" });
+    // Настройка Firebase
     const firebaseConfig = { databaseURL: "https://singularityclicker-default-rtdb.firebaseio.com/" };
-    
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+
+    // Настройка Рекламы (Adsgram)
+    let AdController = null;
+    function initAds() {
+        if (window.Adsgram) {
+            AdController = window.Adsgram.init({ blockId: "22216" });
+        } else {
+            setTimeout(initAds, 500); // Повтор если скрипт не догрузился
+        }
+    }
+    initAds();
 
     let energy = 0, level = 0, isEvolving = false, clickMultiplier = 1, isAutoClickActive = false;
     let multEndTime = 0, autoEndTime = 0, multTimer, autoTimer, currentMathAnswer = 0;
@@ -148,59 +134,30 @@
         energy += gain; 
         energyEl.textContent = Math.floor(energy); 
         
-        // Визуальный эффект
-        shape.style.transform = "scale(0.92)"; 
+        shape.style.transform = "scale(0.9)"; 
         setTimeout(() => shape.style.transform = "scale(1)", 50); 
         
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light"); 
-        
         showPlus(gain, e); 
         if(energy >= 1000 && level === 0) evolveToLine(); 
     }
 
-    function showPlus(v, e) { 
-        const p = document.createElement("div"); 
-        p.className = "plus"; 
-        p.textContent = "+" + v; 
-        
-        // Появление в месте клика или в центре
-        const x = e ? e.clientX : window.innerWidth / 2;
-        const y = e ? e.clientY : window.innerHeight / 2;
-        
-        p.style.left = `${x - 20}px`; 
-        p.style.top = `${y - 20}px`; 
-        
-        document.body.appendChild(p); 
-        p.animate([
-            { opacity: 1, transform: "translateY(0)" }, 
-            { opacity: 0, transform: "translateY(-100px)" }
-        ], 800); 
-        setTimeout(() => p.remove(), 800); 
-    }
-
-    // Остальная логика (реклама, эволюция, таймеры) без изменений, 
-    // но с исправленными вызовами визуалов
-    
-    function evolveToLine() { 
-        isEvolving = true; 
-        level = 1; 
-        shape.classList.add("line"); 
-        document.getElementById("status").textContent = "LINE"; 
-        save(); 
-        setTimeout(() => isEvolving = false, 500); 
-    }
-
-    function showAd(t) { 
-        if(!AdController) {
-            tg.showAlert("Рекламный блок не загружен");
+    function showAd(t) {
+        if (!AdController) {
+            tg.showAlert("Рекламный блок еще загружается. Попробуйте через 3 секунды.");
             return;
         }
-        AdController.show().then(() => { 
+
+        AdController.show().then(() => {
             const now = Date.now(); 
             if(t === 'multiplier') { multEndTime = now + 300000; startMultTimer(); } 
             else { autoEndTime = now + 60000; startAutoTimer(); } 
             save(); 
-        }).catch(() => tg.showAlert("Реклама не готова"));
+        }).catch((err) => {
+            if (err.error === "not_filled") tg.showAlert("Реклама временно отсутствует.");
+            else if (err.error === "closed") tg.showAlert("Бонус не начислен: вы закрыли рекламу.");
+            else console.error("Adsgram Error:", err);
+        });
     }
 
     function startMultTimer() { 
@@ -208,12 +165,10 @@
         multTimer = setInterval(() => { 
             let r = Math.round((multEndTime - Date.now())/1000); 
             if(r <= 0) { 
-                clickMultiplier = 1; 
-                document.getElementById("timer-mult").style.display = "none"; 
+                clickMultiplier = 1; document.getElementById("timer-mult").style.display = "none"; 
                 clearInterval(multTimer); 
             } else { 
-                clickMultiplier = 2; 
-                document.getElementById("timer-mult").style.display = "block"; 
+                clickMultiplier = 2; document.getElementById("timer-mult").style.display = "block"; 
                 document.getElementById("timer-mult").textContent = `x2: ${r}s`; 
             } 
             updateVisuals(); 
@@ -225,12 +180,10 @@
         autoTimer = setInterval(() => { 
             let r = Math.round((autoEndTime - Date.now())/1000); 
             if(r <= 0) { 
-                isAutoClickActive = false; 
-                document.getElementById("timer-auto").style.display = "none"; 
+                isAutoClickActive = false; document.getElementById("timer-auto").style.display = "none"; 
                 clearInterval(autoTimer); 
             } else { 
-                isAutoClickActive = true; 
-                document.getElementById("timer-auto").style.display = "block"; 
+                isAutoClickActive = true; document.getElementById("timer-auto").style.display = "block"; 
                 document.getElementById("timer-auto").textContent = `🤖: ${r}s`; 
             } 
             updateVisuals(); 
@@ -244,40 +197,42 @@
         else if(isAutoClickActive) shape.classList.add("glow-auto"); 
     }
 
-    setInterval(() => { 
-        if(isAutoClickActive && !isEvolving) { 
-            energy += (level === 0 ? 1 : 2); // Автоклик дает чуть больше на уровне Line
-            energyEl.textContent = Math.floor(energy); 
-            if(energy >= 1000 && level === 0) evolveToLine(); 
-        }
-    }, 1000);
+    function evolveToLine() { 
+        isEvolving = true; level = 1; 
+        shape.classList.add("line"); 
+        document.getElementById("status").textContent = "LINE"; 
+        save(); 
+        setTimeout(() => isEvolving = false, 500); 
+    }
+
+    function showPlus(v, e) { 
+        const p = document.createElement("div"); 
+        p.className = "plus"; p.textContent = "+" + v; 
+        const x = e ? e.clientX : window.innerWidth / 2;
+        const y = e ? e.clientY : window.innerHeight / 2;
+        p.style.left = `${x - 10}px`; p.style.top = `${y - 20}px`; 
+        document.body.appendChild(p); 
+        p.animate([{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(-100px)" }], 800); 
+        setTimeout(() => p.remove(), 800); 
+    }
 
     function save() { 
         const u = tg.initDataUnsafe?.user; 
-        if(u) db.ref('users/'+u.id).update({ 
-            n: u.first_name, 
-            s: Math.floor(energy), 
-            l: level, 
-            me: multEndTime, 
-            ae: autoEndTime 
-        }); 
+        if(u) db.ref('users/'+u.id).update({ n: u.first_name, s: Math.floor(energy), l: level, me: multEndTime, ae: autoEndTime }); 
     }
 
     function load() { 
-        const u = tg.initDataUnsafe?.user; 
-        if(!u) return; 
+        const u = tg.initDataUnsafe?.user; if(!u) return; 
         db.ref('users/'+u.id).once('value', s => { 
             const d = s.val(); 
             if(d) { 
-                energy = d.s || 0; level = d.l || 0; 
-                energyEl.textContent = energy; 
+                energy = d.s || 0; level = d.l || 0; energyEl.textContent = energy; 
                 if(level === 1) shape.classList.add("line"); 
                 const now = Date.now(); 
                 if(d.me > now) { multEndTime = d.me; startMultTimer(); } 
                 if(d.ae > now) { autoEndTime = d.ae; startAutoTimer(); } 
             } 
         }); 
-        
         db.ref('users').orderByChild('s').limitToLast(5).on('value', snap => {
             let p = []; snap.forEach(s => p.push(s.val()));
             p.sort((a,b) => b.s - a.s);
@@ -285,32 +240,27 @@
         });
     }
 
-    load(); 
-    setInterval(save, 15000);
+    // Автоклик раз в секунду
+    setInterval(() => { 
+        if(isAutoClickActive && !isEvolving) { 
+            energy += (level === 0 ? 1 : 2); 
+            energyEl.textContent = Math.floor(energy); 
+        }
+    }, 1000);
 
-    // Quiz logic
-    function showMathQuiz() { 
-        const n1 = Math.floor(Math.random()*90)+10, n2 = Math.floor(Math.random()*90)+10, isP = Math.random()>0.5; 
-        currentMathAnswer = isP ? (n1+n2) : (n1-n2); 
-        document.getElementById("math-question").textContent = `${n1} ${isP?'+':'-'} ${n2} = ?`; 
-        document.getElementById("math-overlay").style.display = "flex"; 
-    }
-
+    // Математический квиз
     function checkMathAnswer() { 
         const val = parseInt(document.getElementById("math-input").value); 
         if(val === currentMathAnswer) { 
-            energy += 100; 
-            energyEl.textContent = Math.floor(energy); 
-            showPlus(100); 
-            tg.showAlert("Верно! +100"); 
-            save(); 
-        } else { 
-            tg.showAlert("Неверно!"); 
-        }
+            energy += 100; energyEl.textContent = Math.floor(energy); 
+            tg.showAlert("Верно! +100"); save(); 
+        } else tg.showAlert("Неверно!"); 
         document.getElementById("math-overlay").style.display = "none"; 
         document.getElementById("math-input").value = "";
     }
-    setInterval(showMathQuiz, 1800000);
+
+    load(); 
+    setInterval(save, 15000);
 </script>
 </body>
 </html>
