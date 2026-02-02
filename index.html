@@ -42,8 +42,8 @@
     <div id="game"><div id="shape" onclick="tap()"></div></div>
 <script>
     const tg = window.Telegram.WebApp; tg.ready(); tg.expand();
-    const AdController = window.Adsgram.init({ blockId: "YOUR_BLOCK_ID" });
-    const firebaseConfig = { databaseURL: "https://ВАША_ССЫЛКА.firebaseio.com/" };
+    const AdController = window.Adsgram.init({ blockId: "22216" });
+    const firebaseConfig = { databaseURL: "https://singularityclicker-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     let energy = 0, level = 0, isEvolving = false, clickMultiplier = 1, isAutoClickActive = false;
