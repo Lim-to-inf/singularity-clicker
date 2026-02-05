@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Singularity Math Clicker</title>
+    <title>Singularity: Speed Edition</title>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -11,16 +11,28 @@
 
     <style>
         body {
-            margin: 0; background: radial-gradient(circle at center, #080808, #000);
-            color: white; font-family: sans-serif; display: flex;
+            margin: 0; background: radial-gradient(circle at center, #0a0a0a, #000);
+            color: white; font-family: 'Segoe UI', sans-serif; display: flex;
             flex-direction: column; align-items: center; height: 100vh;
-            overflow: hidden; user-select: none;
+            overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent;
         }
 
+        /* ТАБЛИЦА ЛИДЕРОВ */
+        #leaderboard {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(255, 255, 255, 0.07); padding: 10px;
+            border-radius: 12px; font-size: 11px; z-index: 20;
+            border: 1px solid rgba(0, 242, 255, 0.2); backdrop-filter: blur(8px);
+            min-width: 120px;
+        }
+        #leaderboard strong { color: #00f2ff; text-transform: uppercase; display: block; margin-bottom: 5px; }
+
         /* ИНТЕРФЕЙС */
-        #ui { margin-top: 80px; text-align: center; }
-        #energy { font-size: 60px; color: #00f2ff; text-shadow: 0 0 20px #00f2ff; font-weight: bold; }
-        
+        #ui { margin-top: 90px; text-align: center; }
+        #energy { font-size: 64px; color: #00f2ff; font-weight: 900; text-shadow: 0 0 20px #00f2ff; line-height: 1; }
+        #cps-counter { color: #00ff88; font-size: 14px; margin-top: 5px; font-family: monospace; }
+        #status { opacity: 0.5; letter-spacing: 3px; font-size: 12px; margin-top: 5px; }
+
         .boost-btn {
             position: absolute; top: 15px; right: 15px;
             padding: 12px 18px; border: none; border-radius: 12px;
@@ -28,56 +40,67 @@
             color: white; font-weight: bold; cursor: pointer; z-index: 10;
         }
 
-        #timer { color: #ff9d00; font-weight: bold; margin-top: 5px; display: none; }
+        #timer { color: #ff3300; font-weight: bold; font-size: 14px; margin-top: 5px; display: none; }
 
-        /* КЛАВИАТУРА (Оверлей) */
+        /* МАТЕМАТИЧЕСКИЙ ОВЕРЛЕЙ */
         #math-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none;
+            background: rgba(0,0,0,0.95); display: none;
             flex-direction: column; align-items: center; justify-content: center; z-index: 100;
         }
-        #math-question { font-size: 24px; margin-bottom: 20px; color: #00f2ff; text-align: center; }
+        #math-question { font-size: 22px; margin-bottom: 20px; color: #00f2ff; text-align: center; padding: 0 20px; }
         #math-input {
-            font-size: 32px; background: rgba(255,255,255,0.1); border: 2px solid #00f2ff;
-            border-radius: 10px; width: 200px; text-align: center; margin-bottom: 20px; padding: 10px;
+            font-size: 32px; background: rgba(255,255,255,0.05); border: 2px solid #00f2ff;
+            border-radius: 10px; width: 220px; height: 60px; display: flex; 
+            align-items: center; justify-content: center; margin-bottom: 20px;
         }
-        .keyboard {
-            display: grid; grid-template-columns: repeat(3, 70px); gap: 10px;
-        }
+        .keyboard { display: grid; grid-template-columns: repeat(3, 75px); gap: 12px; }
         .key {
-            width: 70px; height: 70px; background: rgba(255,255,255,0.1);
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            font-size: 24px; font-weight: bold; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+            width: 75px; height: 65px; background: rgba(255,255,255,0.1);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: bold; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
         }
         .key:active { background: #00f2ff; color: black; }
-        .key.wide { grid-column: span 2; width: 150px; background: #0066ff; }
-        .key.clear { background: #ff4444; }
+        .key.wide { grid-column: span 2; width: 162px; background: #0066ff; color: white; }
 
-        /* ИГРА */
+        /* ИГРОВОЙ ОБЪЕКТ */
         #game { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; }
-        #shape { width: 100px; height: 100px; background: #00f2ff; border-radius: 50%; box-shadow: 0 0 30px #00f2ff; }
-        #shape.line { width: 260px; height: 15px; border-radius: 10px; }
+        #shape {
+            width: 110px; height: 110px; background: #00f2ff; border-radius: 50%;
+            box-shadow: 0 0 40px #00f2ff; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2), transform 0.05s;
+        }
+        #shape.line { width: 270px; height: 14px; border-radius: 7px; }
+
+        .plus { position: absolute; color: #00f2ff; font-weight: bold; font-size: 20px; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <button class="boost-btn" onclick="openMath()">⚡ РЕШИТЬ ПРИМЕР</button>
+    <div id="leaderboard">
+        <strong>TOP SINGULARITY</strong>
+        <div id="list">Загрузка...</div>
+    </div>
+
+    <button class="boost-btn" onclick="openMath()">⚡ MATH BOOST</button>
+
     <div id="ui">
         <div id="energy">0</div>
-        <div id="timer">05:00</div>
+        <div id="cps-counter">CPS: 0.0</div>
+        <div id="timer">BOOST: 05:00</div>
+        <div id="status">Point</div>
     </div>
 
     <div id="game"><div id="shape" onclick="tap()"></div></div>
 
     <div id="math-overlay">
-        <div id="math-question">Пример</div>
+        <div id="math-question">...</div>
         <div id="math-input"></div>
         <div class="keyboard">
             <div class="key" onclick="press(1)">1</div><div class="key" onclick="press(2)">2</div><div class="key" onclick="press(3)">3</div>
             <div class="key" onclick="press(4)">4</div><div class="key" onclick="press(5)">5</div><div class="key" onclick="press(6)">6</div>
             <div class="key" onclick="press(7)">7</div><div class="key" onclick="press(8)">8</div><div class="key" onclick="press(9)">9</div>
-            <div class="key clear" onclick="press('C')">C</div><div class="key" onclick="press(0)">0</div><div class="key" onclick="press('-')">-</div>
-            <div class="key wide" onclick="checkAnswer()">ОТВЕТИТЬ</div>
+            <div class="key" style="background:#ff4444" onclick="press('C')">C</div><div class="key" onclick="press(0)">0</div><div class="key" onclick="press('-')">-</div>
+            <div class="key wide" onclick="checkAnswer()">ПОДТВЕРДИТЬ</div>
         </div>
     </div>
 
@@ -85,48 +108,79 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
+    // Firebase (твои данные сохранены)
     const firebaseConfig = { databaseURL: "https://singularityclicker-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let energy = 0, level = 0, autoClickPower = 0, correctAnswer = 0;
+    let energy = 0, level = 0, autoClickActive = false, correctAnswer = 0;
+    let clickCounts = 0; // Для расчета CPS
     const energyEl = document.getElementById("energy");
     const shape = document.getElementById("shape");
     const mathInput = document.getElementById("math-input");
+    const cpsEl = document.getElementById("cps-counter");
 
-    /* КЛИК */
+    /* ТАПАЛКА */
     function tap() {
         const gain = (level === 0) ? 1 : 5;
-        energy += gain;
-        energyEl.textContent = Math.floor(energy);
-        shape.style.transform = "scale(0.9)";
+        addEnergy(gain);
+        clickCounts += gain;
+        
+        shape.style.transform = "scale(0.92)";
         setTimeout(() => shape.style.transform = "scale(1)", 50);
-        if (energy >= 1000 && level === 0) { level = 1; shape.classList.add("line"); }
+        
+        tg.HapticFeedback.impactOccurred("light");
+        if (energy >= 1000 && level === 0) {
+            level = 1;
+            shape.classList.add("line");
+            document.getElementById("status").textContent = "Line";
+        }
     }
 
-    /* ЛОГИКА КЛАВИАТУРЫ */
+    function addEnergy(val) {
+        energy += val;
+        energyEl.textContent = Math.floor(energy);
+    }
+
+    /* РАСЧЕТ CPS (Клики в секунду) */
+    setInterval(() => {
+        // Каждую секунду считаем, сколько прибавилось, и обнуляем счетчик кликов
+        let currentCPS = clickCounts;
+        if (autoClickActive) currentCPS += 10; // Добавляем 10 от автоклика
+        cpsEl.textContent = `CPS: ${currentCPS.toFixed(1)}`;
+        clickCounts = 0;
+    }, 1000);
+
+    /* АВТОКЛИК (10 раз в секунду по +1) */
+    setInterval(() => {
+        if (autoClickActive) {
+            addEnergy(1);
+            // Легкая пульсация формы при автоклике
+            shape.style.boxShadow = "0 0 50px #00f2ff";
+            setTimeout(() => shape.style.boxShadow = "0 0 30px #00f2ff", 50);
+        }
+    }, 100);
+
+    /* МАТЕМАТИКА */
     function openMath() {
-        if(autoClickPower > 0) return tg.showAlert("Буст уже активен!");
+        if(autoClickActive) return tg.showAlert("Буст уже активен!");
         
-        // Генерация примера
-        const types = ['percent', 'root', 'equation'];
-        const type = types[Math.floor(Math.random() * types.length)];
+        const types = ['percent', 'root', 'hard'];
+        const type = types[Math.floor(Math.random()*3)];
         
         if (type === 'percent') {
-            let v = (Math.floor(Math.random()*10)+1)*20;
-            let p = 15; 
-            document.getElementById("math-question").textContent = `Сколько будет ${p}% от ${v}?`;
-            correctAnswer = (v * p) / 100;
+            let v = (Math.floor(Math.random()*5)+1)*40;
+            document.getElementById("math-question").textContent = `15% от числа ${v}`;
+            correctAnswer = (v * 15) / 100;
         } else if (type === 'root') {
-            let roots = [144, 169, 225, 256, 400];
+            let roots = [121, 144, 169, 196, 225, 256, 400];
             let r = roots[Math.floor(Math.random()*roots.length)];
-            document.getElementById("math-question").textContent = `Квадратный корень из ${r}?`;
+            document.getElementById("math-question").textContent = `Квадратный корень из ${r}`;
             correctAnswer = Math.sqrt(r);
         } else {
-            let x = Math.floor(Math.random()*30)+5;
-            let b = Math.floor(Math.random()*50)+10;
-            document.getElementById("math-question").textContent = `Найди X: X + ${b} = ${x + b}`;
-            correctAnswer = x;
+            let a = Math.floor(Math.random()*10)+10, b = Math.floor(Math.random()*5)+2;
+            document.getElementById("math-question").textContent = `(${a} * ${b}) - 7`;
+            correctAnswer = (a * b) - 7;
         }
 
         mathInput.textContent = "";
@@ -135,7 +189,7 @@
 
     function press(key) {
         if (key === 'C') mathInput.textContent = "";
-        else if (mathInput.textContent.length < 6) mathInput.textContent += key;
+        else if (mathInput.textContent.length < 7) mathInput.textContent += key;
         tg.HapticFeedback.impactOccurred("light");
     }
 
@@ -143,38 +197,54 @@
         if (parseFloat(mathInput.textContent) === correctAnswer) {
             document.getElementById("math-overlay").style.display = "none";
             startBoost();
-            tg.HapticFeedback.notificationOccurred("success");
         } else {
             tg.showAlert("Неверно! Попробуй другой пример.");
-            openMath(); // Генерируем новый при ошибке
+            openMath();
         }
     }
 
     function startBoost() {
-        autoClickPower = 2;
+        autoClickActive = true;
         let timeLeft = 300;
         const timerEl = document.getElementById("timer");
         timerEl.style.display = "block";
         
-        let interval = setInterval(() => {
+        let bInterval = setInterval(() => {
             timeLeft--;
             let m = Math.floor(timeLeft/60), s = timeLeft%60;
-            timerEl.textContent = `${m}:${s<10?'0'+s:s}`;
+            timerEl.textContent = `BOOST: ${m}:${s<10?'0'+s:s}`;
             if(timeLeft <= 0) {
-                clearInterval(interval);
-                autoClickPower = 0;
+                clearInterval(bInterval);
+                autoClickActive = false;
                 timerEl.style.display = "none";
             }
         }, 1000);
     }
 
-    setInterval(() => { if(autoClickPower > 0) { energy += autoClickPower; energyEl.textContent = Math.floor(energy); } }, 1000);
-
-    /* СОХРАНЕНИЕ */
+    /* FIREBASE: РЕЙТИНГ И СОХРАНЕНИЕ */
     function save() {
         const user = tg.initDataUnsafe?.user;
-        if(user) db.ref('users/' + user.id).update({ n: user.first_name, s: Math.floor(energy), l: level });
+        if(user) {
+            db.ref('users/' + user.id).update({
+                n: user.first_name || "Unknown",
+                s: Math.floor(energy),
+                l: level
+            });
+        }
     }
+
+    function loadLeaderboard() {
+        db.ref('users').orderByChild('s').limitToLast(5).on('value', snap => {
+            let players = [];
+            snap.forEach(s => players.push(s.val()));
+            players.sort((a,b) => b.s - a.s);
+            document.getElementById("list").innerHTML = players.map((p,i) => 
+                `<div>${i+1}. ${p.n.slice(0,8)}: ${p.s}</div>`
+            ).join('');
+        });
+    }
+
+    loadLeaderboard();
     setInterval(save, 10000);
 </script>
 </body>
