@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Singularity Clicker: Evolution</title>
+    <title>Singularity: Blue Edition</title>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -11,50 +11,72 @@
 
     <style>
         body {
-            margin: 0; background: radial-gradient(circle at center, #0a0a0a, #000);
-            color: white; font-family: 'Segoe UI', sans-serif; display: flex;
+            margin: 0; background: radial-gradient(circle at center, #001529, #000);
+            color: #e0f7ff; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex;
             flex-direction: column; align-items: center; height: 100vh;
             overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent;
         }
 
-        /* ИНТЕРФЕЙС */
-        #ui { margin-top: 100px; text-align: center; }
-        #status { color: #00f2ff; opacity: 0.8; letter-spacing: 4px; text-transform: uppercase; font-size: 14px; margin-bottom: 5px; transition: 1s; }
-        #energy { font-size: 64px; color: #fff; font-weight: 900; text-shadow: 0 0 20px #00f2ff; line-height: 1; }
-        #cps-counter { color: #00ff88; font-size: 16px; margin-top: 10px; font-weight: bold; }
+        /* UI ELEMENTS */
+        #ui { margin-top: 80px; text-align: center; z-index: 10; }
+        #status { color: #00d2ff; opacity: 0.8; letter-spacing: 5px; text-transform: uppercase; font-size: 14px; margin-bottom: 8px; }
+        #energy { font-size: 68px; color: #fff; font-weight: 900; text-shadow: 0 0 25px #00d2ff; line-height: 1; }
+        #cps-counter { color: #00d2ff; font-size: 16px; margin-top: 10px; font-weight: bold; opacity: 0.9; }
         
-        /* КНОПКА ВНИЗУ */
+        /* TIMER */
+        #timer { color: #fff; background: rgba(0, 210, 255, 0.2); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; margin-top: 10px; display: none; border: 1px solid #00d2ff; }
+
+        /* BOOST BUTTON */
         .boost-btn {
             position: absolute; bottom: 40px;
-            padding: 15px 40px; border: none; border-radius: 50px;
-            background: linear-gradient(45deg, #00f2ff, #0066ff);
-            color: white; font-weight: bold; cursor: pointer; z-index: 10;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            padding: 18px 50px; border: none; border-radius: 50px;
+            background: linear-gradient(135deg, #00d2ff, #0072ff);
+            color: white; font-size: 16px; font-weight: bold; cursor: pointer; z-index: 10;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.5); text-transform: uppercase; letter-spacing: 1px;
         }
-        #timer { color: #ff3300; font-weight: bold; font-size: 14px; margin-top: 5px; display: none; }
 
         #game { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; position: relative; }
         
-        /* ФИГУРА */
+        /* THE SHAPE */
         #shape {
-            width: 110px; height: 110px; background: #00f2ff; border-radius: 50%;
-            box-shadow: 0 0 40px #00f2ff; 
-            transition: width 3s ease-in-out, height 3s ease-in-out, border-radius 3s ease-in-out, transform 0.05s, box-shadow 3s;
+            width: 120px; height: 120px; background: #00d2ff; border-radius: 50%;
+            box-shadow: 0 0 50px #00d2ff, inset 0 0 20px #fff; 
+            transition: width 3s ease-in-out, height 3s ease-in-out, border-radius 3s ease-in-out, transform 0.05s;
         }
-        #shape.line { width: 280px; height: 12px; border-radius: 6px; box-shadow: 0 0 60px #00f2ff; }
+        #shape.line { width: 280px; height: 12px; border-radius: 6px; box-shadow: 0 0 60px #00d2ff; }
 
-        /* ЧАСТИЦЫ */
+        /* PARTICLES */
         .plus { 
-            position: absolute; color: #00f2ff; font-weight: bold; font-size: 28px; 
-            pointer-events: none; z-index: 50; text-shadow: 0 0 10px #00f2ff;
+            position: absolute; color: #fff; font-weight: bold; font-size: 28px; 
+            pointer-events: none; z-index: 50; text-shadow: 0 0 15px #00d2ff;
         }
 
-        /* ЭФФЕКТ ПЕРЕХОДА */
+        /* EVOLUTION OVERLAY */
         .evolving-text {
-            position: absolute; top: 40%; color: white; font-weight: bold;
-            letter-spacing: 10px; animation: blink 0.5s infinite; display: none;
+            position: absolute; top: 40%; color: #00d2ff; font-weight: bold;
+            letter-spacing: 10px; animation: blink 0.6s infinite; display: none; font-size: 20px;
         }
-        @keyframes blink { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes blink { 0% { opacity: 0.2; } 50% { opacity: 1; } 100% { opacity: 0.2; } }
+
+        /* MATH OVERLAY */
+        #math-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 10, 20, 0.98); display: none; 
+            flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+        }
+        #math-question { font-size: 26px; margin-bottom: 30px; color: #00d2ff; font-weight: bold; }
+        #math-input {
+            font-size: 40px; border: 2px solid #00d2ff; width: 240px; height: 80px; 
+            display: flex; align-items: center; justify-content: center; margin-bottom: 40px; 
+            background: rgba(0, 210, 255, 0.1); color: #fff; border-radius: 15px;
+        }
+        .key-grid { display: grid; grid-template-columns: repeat(3, 85px); gap: 15px; }
+        .key {
+            width: 85px; height: 75px; background: #002b4d; color: #fff; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 30px; border-radius: 15px; border: 1px solid #004e8c;
+        }
+        .key:active { background: #00d2ff; color: #000; }
     </style>
 </head>
 <body>
@@ -62,8 +84,8 @@
     <div id="ui">
         <div id="status">Point</div>
         <div id="energy">0</div>
-        <div id="cps-counter">0 клик/с</div>
-        <div id="timer">БУСТ: 00:30</div>
+        <div id="cps-counter">0 clicks/s</div>
+        <div id="timer">BOOST: 00:30</div>
     </div>
 
     <div id="game">
@@ -71,24 +93,17 @@
         <div id="shape" onclick="tap(event)"></div>
     </div>
 
-    <button class="boost-btn" onclick="openMath()">⚡ ACTIVATION BOOST</button>
+    <button class="boost-btn" onclick="openMath()">⚡ ACTIVATE BOOST</button>
 
-    <div id="math-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:100;">
-        <div id="math-question" style="font-size:24px; margin-bottom:25px; color:#00f2ff;">...</div>
-        <div id="math-input" style="font-size:36px; border:2px solid #00f2ff; width:220px; height:70px; display:flex; align-items:center; justify-content:center; margin-bottom:30px; background: rgba(0,242,255,0.1);"></div>
-        <div style="display:grid; grid-template-columns:repeat(3, 80px); gap:15px;">
-            <div onclick="press(1)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">1</div>
-            <div onclick="press(2)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">2</div>
-            <div onclick="press(3)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">3</div>
-            <div onclick="press(4)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">4</div>
-            <div onclick="press(5)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">5</div>
-            <div onclick="press(6)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">6</div>
-            <div onclick="press(7)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">7</div>
-            <div onclick="press(8)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">8</div>
-            <div onclick="press(9)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">9</div>
-            <div onclick="press('C')" style="width:80px; height:70px; background:#f44; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">C</div>
-            <div onclick="press(0)" style="width:80px; height:70px; background:#222; display:flex; align-items:center; justify-content:center; font-size:28px; border-radius:10px;">0</div>
-            <div onclick="checkAnswer()" style="width:80px; height:70px; background:#00f2ff; color:black; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:bold; border-radius:10px;">OK</div>
+    <div id="math-overlay">
+        <div id="math-question">...</div>
+        <div id="math-input"></div>
+        <div class="key-grid">
+            <div class="key" onclick="press(1)">1</div><div class="key" onclick="press(2)">2</div><div class="key" onclick="press(3)">3</div>
+            <div class="key" onclick="press(4)">4</div><div class="key" onclick="press(5)">5</div><div class="key" onclick="press(6)">6</div>
+            <div class="key" onclick="press(7)">7</div><div class="key" onclick="press(8)">8</div><div class="key" onclick="press(9)">9</div>
+            <div class="key" style="background:#6a0000" onclick="press('C')">C</div><div class="key" onclick="press(0)">0</div>
+            <div class="key" style="background:#00d2ff; color:#000; font-size:20px; font-weight:bold;" onclick="checkAnswer()">OK</div>
         </div>
     </div>
 
@@ -102,7 +117,7 @@
 
     let energy = 0, level = 0, autoClickActive = false, correctAnswer = 0;
     let manualClicksThisSecond = 0;
-    let isTransitioning = false; // Блокировка кликов
+    let isTransitioning = false;
 
     const energyEl = document.getElementById("energy");
     const shape = document.getElementById("shape");
@@ -114,8 +129,7 @@
             db.ref('users/' + user.id).once('value').then(s => {
                 const data = s.val();
                 if(data) {
-                    energy = data.s || 0;
-                    level = data.l || 0;
+                    energy = data.s || 0; level = data.l || 0;
                     energyEl.textContent = energy;
                     if(level >= 1) { shape.classList.add("line"); statusEl.textContent = "Line"; }
                 }
@@ -125,8 +139,7 @@
     loadData();
 
     function tap(e) {
-        if(isTransitioning) return; // Запрет клика при переходе
-
+        if(isTransitioning) return;
         const gain = (level === 0) ? 1 : 2;
         energy += gain;
         manualClicksThisSecond += gain;
@@ -135,15 +148,14 @@
         shape.style.transform = "scale(0.85)";
         setTimeout(() => shape.style.transform = "scale(1)", 50);
         
-        showPlus(gain, e.clientX, e.clientY);
+        spawnParticle(gain, e.clientX, e.clientY);
         tg.HapticFeedback.impactOccurred("medium");
 
-        if (energy >= 1000 && level === 0) {
-            startEvolution();
-        }
+        if (energy >= 1000 && level === 0) startEvolution();
     }
 
-    function showPlus(val, x, y) {
+    // Main particle function
+    function spawnParticle(val, x, y) {
         const p = document.createElement("div");
         p.className = "plus";
         p.textContent = "+" + val;
@@ -151,61 +163,67 @@
         p.style.top = y + "px";
         document.body.appendChild(p);
 
-        // Увеличен радиус разлета
-        const randomX = (Math.random() - 0.5) * 300; // Разлет на 150px влево или вправо
-        const randomY = -200 - (Math.random() * 100); // Разлет вверх на 200-300px
+        const randomX = (Math.random() - 0.5) * 250;
+        const randomY = -150 - (Math.random() * 100);
 
         p.animate([
             { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-            { transform: `translate(${randomX}px, ${randomY}px) scale(1.5)`, opacity: 0 }
-        ], { duration: 1000, easing: 'ease-out' });
+            { transform: `translate(${randomX}px, ${randomY}px) scale(1.8)`, opacity: 0 }
+        ], { duration: 900, easing: 'ease-out' });
         
-        setTimeout(() => p.remove(), 1000);
+        setTimeout(() => p.remove(), 900);
+    }
+
+    // Auto-particle for Boost mode
+    function spawnAutoParticle() {
+        const rect = shape.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        spawnParticle(1, centerX, centerY);
     }
 
     function startEvolution() {
         isTransitioning = true;
-        autoClickActive = false; // Отключаем буст если он был
+        autoClickActive = false;
         level = 1;
-        
         document.getElementById("evolving").style.display = "block";
-        shape.style.boxShadow = "0 0 150px #00f2ff";
+        shape.style.boxShadow = "0 0 150px #00d2ff";
         
         setTimeout(() => {
             shape.classList.add("line");
             statusEl.textContent = "Line";
-            statusEl.style.fontSize = "24px";
         }, 100);
 
         setTimeout(() => {
             isTransitioning = false;
             document.getElementById("evolving").style.display = "none";
-            statusEl.style.fontSize = "14px";
             save();
             tg.HapticFeedback.notificationOccurred("success");
-        }, 3000); // Длительность перехода 3 секунды
+        }, 3000);
     }
 
     setInterval(() => {
         let totalCPS = manualClicksThisSecond;
         if(autoClickActive && !isTransitioning) totalCPS += 10;
-        document.getElementById("cps-counter").textContent = Math.round(totalCPS) + " клик/с";
+        document.getElementById("cps-counter").textContent = Math.round(totalCPS) + " clicks/s";
         manualClicksThisSecond = 0;
     }, 1000);
 
+    // Boost Tick (0.1s)
     setInterval(() => {
         if(autoClickActive && !isTransitioning) {
-            energy += 1;
+            energy += (level === 0) ? 1 : 2;
             energyEl.textContent = energy;
+            spawnAutoParticle(); // Particles during boost
             if (energy >= 1000 && level === 0) startEvolution();
         }
     }, 100);
 
     function openMath() {
         if(autoClickActive || isTransitioning) return;
-        let a = Math.floor(Math.random()*20)+10, b = Math.floor(Math.random()*8)+3;
-        document.getElementById("math-question").textContent = `${a} * ${b} - 12 = ?`;
-        correctAnswer = (a * b) - 12;
+        let a = Math.floor(Math.random()*20)+10, b = Math.floor(Math.random()*9)+2;
+        document.getElementById("math-question").textContent = `${a} * ${b} - 8 = ?`;
+        correctAnswer = (a * b) - 8;
         document.getElementById("math-input").textContent = "";
         document.getElementById("math-overlay").style.display = "flex";
     }
@@ -222,10 +240,10 @@
             autoClickActive = true;
             let timeLeft = 30;
             const timerEl = document.getElementById("timer");
-            timerEl.style.display = "block";
+            timerEl.style.display = "inline-block";
             let bInt = setInterval(() => {
                 timeLeft--;
-                timerEl.textContent = `БУСТ: 00:${timeLeft < 10 ? '0'+timeLeft : timeLeft}`;
+                timerEl.textContent = `BOOST: 00:${timeLeft < 10 ? '0'+timeLeft : timeLeft}`;
                 if(timeLeft <= 0 || isTransitioning) {
                     clearInterval(bInt);
                     autoClickActive = false;
@@ -233,7 +251,7 @@
                 }
             }, 1000);
         } else {
-            tg.showAlert("Данные не верны!");
+            tg.showAlert("Calculation Error!");
             openMath();
         }
     }
@@ -244,7 +262,7 @@
             db.ref('users/' + user.id).update({ n: user.first_name, s: energy, l: level });
         }
     }
-    setInterval(save, 7000);
+    setInterval(save, 8000);
 </script>
 </body>
 </html>
