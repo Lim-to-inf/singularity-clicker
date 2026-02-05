@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Singularity: Blue Edition</title>
+    <title>Singularity: Blue Pulse</title>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -12,21 +12,17 @@
     <style>
         body {
             margin: 0; background: radial-gradient(circle at center, #001529, #000);
-            color: #e0f7ff; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex;
+            color: #e0f7ff; font-family: 'Segoe UI', sans-serif; display: flex;
             flex-direction: column; align-items: center; height: 100vh;
             overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent;
         }
 
-        /* UI ELEMENTS */
         #ui { margin-top: 80px; text-align: center; z-index: 10; }
         #status { color: #00d2ff; opacity: 0.8; letter-spacing: 5px; text-transform: uppercase; font-size: 14px; margin-bottom: 8px; }
         #energy { font-size: 68px; color: #fff; font-weight: 900; text-shadow: 0 0 25px #00d2ff; line-height: 1; }
         #cps-counter { color: #00d2ff; font-size: 16px; margin-top: 10px; font-weight: bold; opacity: 0.9; }
-        
-        /* TIMER */
         #timer { color: #fff; background: rgba(0, 210, 255, 0.2); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; margin-top: 10px; display: none; border: 1px solid #00d2ff; }
 
-        /* BOOST BUTTON */
         .boost-btn {
             position: absolute; bottom: 40px;
             padding: 18px 50px; border: none; border-radius: 50px;
@@ -37,7 +33,6 @@
 
         #game { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; position: relative; }
         
-        /* THE SHAPE */
         #shape {
             width: 120px; height: 120px; background: #00d2ff; border-radius: 50%;
             box-shadow: 0 0 50px #00d2ff, inset 0 0 20px #fff; 
@@ -45,29 +40,27 @@
         }
         #shape.line { width: 280px; height: 12px; border-radius: 6px; box-shadow: 0 0 60px #00d2ff; }
 
-        /* PARTICLES */
         .plus { 
             position: absolute; color: #fff; font-weight: bold; font-size: 28px; 
             pointer-events: none; z-index: 50; text-shadow: 0 0 15px #00d2ff;
         }
 
-        /* EVOLUTION OVERLAY */
         .evolving-text {
-            position: absolute; top: 40%; color: #00d2ff; font-weight: bold;
-            letter-spacing: 10px; animation: blink 0.6s infinite; display: none; font-size: 20px;
+            position: absolute; top: 30%; color: #fff; font-weight: bold;
+            letter-spacing: 8px; animation: blink 0.6s infinite; display: none; font-size: 24px;
+            text-shadow: 0 0 20px #00d2ff;
         }
         @keyframes blink { 0% { opacity: 0.2; } 50% { opacity: 1; } 100% { opacity: 0.2; } }
 
-        /* MATH OVERLAY */
         #math-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0, 10, 20, 0.98); display: none; 
             flex-direction: column; align-items: center; justify-content: center; z-index: 100;
         }
-        #math-question { font-size: 26px; margin-bottom: 30px; color: #00d2ff; font-weight: bold; }
+        #math-question { font-size: 22px; margin-bottom: 30px; color: #00d2ff; font-weight: bold; text-align: center; padding: 0 20px; }
         #math-input {
             font-size: 40px; border: 2px solid #00d2ff; width: 240px; height: 80px; 
-            display: flex; align-items: center; justify-content: center; margin-bottom: 40px; 
+            display: flex; align-items: center; justify-content: center; margin-bottom: 30px; 
             background: rgba(0, 210, 255, 0.1); color: #fff; border-radius: 15px;
         }
         .key-grid { display: grid; grid-template-columns: repeat(3, 85px); gap: 15px; }
@@ -89,7 +82,7 @@
     </div>
 
     <div id="game">
-        <div id="evolving" class="evolving-text">EVOLVING...</div>
+        <div id="evolving" class="evolving-text">EVOLUTION...</div>
         <div id="shape" onclick="tap(event)"></div>
     </div>
 
@@ -140,21 +133,24 @@
 
     function tap(e) {
         if(isTransitioning) return;
+        // Line balance: 2 points
         const gain = (level === 0) ? 1 : 2;
         energy += gain;
         manualClicksThisSecond += gain;
         energyEl.textContent = energy;
         
-        shape.style.transform = "scale(0.85)";
-        setTimeout(() => shape.style.transform = "scale(1)", 50);
-        
+        applyPulse();
         spawnParticle(gain, e.clientX, e.clientY);
         tg.HapticFeedback.impactOccurred("medium");
 
         if (energy >= 1000 && level === 0) startEvolution();
     }
 
-    // Main particle function
+    function applyPulse() {
+        shape.style.transform = "scale(0.88)";
+        setTimeout(() => shape.style.transform = "scale(1)", 50);
+    }
+
     function spawnParticle(val, x, y) {
         const p = document.createElement("div");
         p.className = "plus";
@@ -174,12 +170,12 @@
         setTimeout(() => p.remove(), 900);
     }
 
-    // Auto-particle for Boost mode
     function spawnAutoParticle() {
         const rect = shape.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
-        spawnParticle(1, centerX, centerY);
+        const autoGain = (level === 0) ? 1 : 2;
+        spawnParticle(autoGain, centerX, centerY);
     }
 
     function startEvolution() {
@@ -204,26 +200,47 @@
 
     setInterval(() => {
         let totalCPS = manualClicksThisSecond;
-        if(autoClickActive && !isTransitioning) totalCPS += 10;
+        if(autoClickActive && !isTransitioning) totalCPS += (level === 0 ? 10 : 20);
         document.getElementById("cps-counter").textContent = Math.round(totalCPS) + " clicks/s";
         manualClicksThisSecond = 0;
     }, 1000);
 
-    // Boost Tick (0.1s)
+    // Boost Logic with Pulse effect
     setInterval(() => {
         if(autoClickActive && !isTransitioning) {
-            energy += (level === 0) ? 1 : 2;
+            const boostAmount = (level === 0) ? 1 : 2;
+            energy += boostAmount;
             energyEl.textContent = energy;
-            spawnAutoParticle(); // Particles during boost
+            
+            // Visual feedback
+            applyPulse();
+            spawnAutoParticle();
+            
             if (energy >= 1000 && level === 0) startEvolution();
         }
     }, 100);
 
     function openMath() {
         if(autoClickActive || isTransitioning) return;
-        let a = Math.floor(Math.random()*20)+10, b = Math.floor(Math.random()*9)+2;
-        document.getElementById("math-question").textContent = `${a} * ${b} - 8 = ?`;
-        correctAnswer = (a * b) - 8;
+        const types = ['mul', 'square', 'percent', 'equation'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        let q = "", ans = 0;
+        switch(type) {
+            case 'mul':
+                let a = Math.floor(Math.random()*15)+10, b = Math.floor(Math.random()*8)+3;
+                q = `${a} * ${b} - 5 = ?`; ans = (a * b) - 5; break;
+            case 'square':
+                let s = Math.floor(Math.random()*9)+12;
+                q = `Square of ${s} (x²) = ?`; ans = s * s; break;
+            case 'percent':
+                let total = (Math.floor(Math.random()*5)+1)*40;
+                q = `25% of ${total} = ?`; ans = total * 0.25; break;
+            case 'equation':
+                let x = Math.floor(Math.random()*40)+10, c = Math.floor(Math.random()*30)+5;
+                q = `Find X: X + ${c} = ${x + c}`; ans = x; break;
+        }
+        correctAnswer = ans;
+        document.getElementById("math-question").textContent = q;
         document.getElementById("math-input").textContent = "";
         document.getElementById("math-overlay").style.display = "flex";
     }
@@ -251,7 +268,7 @@
                 }
             }, 1000);
         } else {
-            tg.showAlert("Calculation Error!");
+            tg.showAlert("Wrong answer!");
             openMath();
         }
     }
