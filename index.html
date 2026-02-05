@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Singularity: Speed Edition</title>
+    <title>Singularity Clicker: Fixed</title>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -17,21 +17,12 @@
             overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent;
         }
 
-        /* ТАБЛИЦА ЛИДЕРОВ */
         #leaderboard {
             position: absolute; top: 10px; left: 10px;
             background: rgba(255, 255, 255, 0.07); padding: 10px;
             border-radius: 12px; font-size: 11px; z-index: 20;
             border: 1px solid rgba(0, 242, 255, 0.2); backdrop-filter: blur(8px);
-            min-width: 120px;
         }
-        #leaderboard strong { color: #00f2ff; text-transform: uppercase; display: block; margin-bottom: 5px; }
-
-        /* ИНТЕРФЕЙС */
-        #ui { margin-top: 90px; text-align: center; }
-        #energy { font-size: 64px; color: #00f2ff; font-weight: 900; text-shadow: 0 0 20px #00f2ff; line-height: 1; }
-        #cps-counter { color: #00ff88; font-size: 14px; margin-top: 5px; font-family: monospace; }
-        #status { opacity: 0.5; letter-spacing: 3px; font-size: 12px; margin-top: 5px; }
 
         .boost-btn {
             position: absolute; top: 15px; right: 15px;
@@ -40,67 +31,58 @@
             color: white; font-weight: bold; cursor: pointer; z-index: 10;
         }
 
+        #ui { margin-top: 80px; text-align: center; }
+        #status { color: #00f2ff; opacity: 0.8; letter-spacing: 4px; text-transform: uppercase; font-size: 14px; margin-bottom: 5px; }
+        #energy { font-size: 64px; color: #fff; font-weight: 900; text-shadow: 0 0 20px #00f2ff; line-height: 1; }
+        #cps-counter { color: #00ff88; font-size: 16px; margin-top: 10px; font-weight: bold; }
         #timer { color: #ff3300; font-weight: bold; font-size: 14px; margin-top: 5px; display: none; }
 
-        /* МАТЕМАТИЧЕСКИЙ ОВЕРЛЕЙ */
-        #math-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); display: none;
-            flex-direction: column; align-items: center; justify-content: center; z-index: 100;
-        }
-        #math-question { font-size: 22px; margin-bottom: 20px; color: #00f2ff; text-align: center; padding: 0 20px; }
-        #math-input {
-            font-size: 32px; background: rgba(255,255,255,0.05); border: 2px solid #00f2ff;
-            border-radius: 10px; width: 220px; height: 60px; display: flex; 
-            align-items: center; justify-content: center; margin-bottom: 20px;
-        }
-        .keyboard { display: grid; grid-template-columns: repeat(3, 75px); gap: 12px; }
-        .key {
-            width: 75px; height: 65px; background: rgba(255,255,255,0.1);
-            border-radius: 12px; display: flex; align-items: center; justify-content: center;
-            font-size: 24px; font-weight: bold; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
-        }
-        .key:active { background: #00f2ff; color: black; }
-        .key.wide { grid-column: span 2; width: 162px; background: #0066ff; color: white; }
-
-        /* ИГРОВОЙ ОБЪЕКТ */
-        #game { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; }
+        #game { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; position: relative; }
         #shape {
             width: 110px; height: 110px; background: #00f2ff; border-radius: 50%;
-            box-shadow: 0 0 40px #00f2ff; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2), transform 0.05s;
+            box-shadow: 0 0 40px #00f2ff; transition: width 0.5s, height 0.5s, border-radius 0.5s, transform 0.05s;
         }
-        #shape.line { width: 270px; height: 14px; border-radius: 7px; }
+        #shape.line { width: 270px; height: 14px; border-radius: 7px; box-shadow: 0 0 50px #00f2ff; }
 
-        .plus { position: absolute; color: #00f2ff; font-weight: bold; font-size: 20px; pointer-events: none; }
+        .plus { position: absolute; color: #00f2ff; font-weight: bold; font-size: 26px; pointer-events: none; z-index: 50; }
     </style>
 </head>
 <body>
 
     <div id="leaderboard">
-        <strong>TOP SINGULARITY</strong>
+        <strong>TOP</strong>
         <div id="list">Загрузка...</div>
     </div>
 
-    <button class="boost-btn" onclick="openMath()">⚡ MATH BOOST</button>
+    <button class="boost-btn" onclick="openMath()">⚡ БУСТ</button>
 
     <div id="ui">
-        <div id="energy">0</div>
-        <div id="cps-counter">CPS: 0.0</div>
-        <div id="timer">BOOST: 01:00</div>
         <div id="status">Point</div>
+        <div id="energy">0</div>
+        <div id="cps-counter">0 клик/с</div>
+        <div id="timer">БУСТ: 00:30</div>
     </div>
 
-    <div id="game"><div id="shape" onclick="tap()"></div></div>
+    <div id="game">
+        <div id="shape" onclick="tap(event)"></div>
+    </div>
 
-    <div id="math-overlay">
-        <div id="math-question">...</div>
-        <div id="math-input"></div>
-        <div class="keyboard">
-            <div class="key" onclick="press(1)">1</div><div class="key" onclick="press(2)">2</div><div class="key" onclick="press(3)">3</div>
-            <div class="key" onclick="press(4)">4</div><div class="key" onclick="press(5)">5</div><div class="key" onclick="press(6)">6</div>
-            <div class="key" onclick="press(7)">7</div><div class="key" onclick="press(8)">8</div><div class="key" onclick="press(9)">9</div>
-            <div class="key" style="background:#ff4444" onclick="press('C')">C</div><div class="key" onclick="press(0)">0</div><div class="key" onclick="press('-')">-</div>
-            <div class="key wide" onclick="checkAnswer()">ПОДТВЕРДИТЬ</div>
+    <div id="math-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:100;">
+        <div id="math-question" style="font-size:22px; margin-bottom:20px; color:#00f2ff;">...</div>
+        <div id="math-input" style="font-size:32px; border:2px solid #00f2ff; width:200px; height:60px; display:flex; align-items:center; justify-content:center; margin-bottom:20px;"></div>
+        <div style="display:grid; grid-template-columns:repeat(3, 70px); gap:10px;">
+            <div onclick="press(1)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">1</div>
+            <div onclick="press(2)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">2</div>
+            <div onclick="press(3)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">3</div>
+            <div onclick="press(4)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">4</div>
+            <div onclick="press(5)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">5</div>
+            <div onclick="press(6)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">6</div>
+            <div onclick="press(7)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">7</div>
+            <div onclick="press(8)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">8</div>
+            <div onclick="press(9)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">9</div>
+            <div onclick="press('C')" style="width:70px; height:60px; background:#f44; display:flex; align-items:center; justify-content:center; font-size:24px;">C</div>
+            <div onclick="press(0)" style="width:70px; height:60px; background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">0</div>
+            <div onclick="checkAnswer()" style="width:70px; height:60px; background:#0066ff; display:flex; align-items:center; justify-content:center; font-size:14px;">OK</div>
         </div>
     </div>
 
@@ -108,126 +90,143 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    // Firebase (твои данные сохранены)
     const firebaseConfig = { databaseURL: "https://singularityclicker-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     let energy = 0, level = 0, autoClickActive = false, correctAnswer = 0;
-    let clickCounts = 0; // Для расчета CPS
+    let manualClicksThisSecond = 0;
     const energyEl = document.getElementById("energy");
     const shape = document.getElementById("shape");
-    const mathInput = document.getElementById("math-input");
-    const cpsEl = document.getElementById("cps-counter");
+    const statusEl = document.getElementById("status");
 
-    /* ТАПАЛКА */
-    function tap() {
+    // Загрузка данных
+    function loadData() {
+        const user = tg.initDataUnsafe?.user;
+        if(user) {
+            db.ref('users/' + user.id).once('value').then(s => {
+                const data = s.val();
+                if(data) {
+                    energy = data.s || 0;
+                    level = data.l || 0;
+                    energyEl.textContent = energy;
+                    if(level === 1) {
+                        shape.classList.add("line");
+                        statusEl.textContent = "Line";
+                    }
+                }
+            });
+        }
+    }
+    loadData();
+
+    function tap(e) {
         const gain = (level === 0) ? 1 : 5;
-        addEnergy(gain);
-        clickCounts += gain;
+        energy += gain;
+        manualClicksThisSecond += gain;
+        energyEl.textContent = energy;
         
-        shape.style.transform = "scale(0.92)";
+        // Эффект нажатия
+        shape.style.transform = "scale(0.9)";
         setTimeout(() => shape.style.transform = "scale(1)", 50);
         
+        // Вылетающий текст
+        showPlus(gain, e.clientX, e.clientY);
+        
         tg.HapticFeedback.impactOccurred("light");
+
+        // Эволюция
         if (energy >= 1000 && level === 0) {
             level = 1;
             shape.classList.add("line");
-            document.getElementById("status").textContent = "Line";
+            statusEl.textContent = "Line";
+            save();
         }
     }
 
-    function addEnergy(val) {
-        energy += val;
-        energyEl.textContent = Math.floor(energy);
+    function showPlus(val, x, y) {
+        const p = document.createElement("div");
+        p.className = "plus";
+        p.textContent = "+" + val;
+        p.style.left = x + "px";
+        p.style.top = y + "px";
+        document.body.appendChild(p);
+        p.animate([
+            { transform: 'translateY(0)', opacity: 1 },
+            { transform: 'translateY(-100px)', opacity: 0 }
+        ], { duration: 800, easing: 'ease-out' });
+        setTimeout(() => p.remove(), 800);
     }
 
-    /* РАСЧЕТ CPS (Клики в секунду) */
+    // CPS Счетчик
     setInterval(() => {
-        // Каждую секунду считаем, сколько прибавилось, и обнуляем счетчик кликов
-        let currentCPS = clickCounts;
-        if (autoClickActive) currentCPS += 10; // Добавляем 10 от автоклика
-        cpsEl.textContent = `CPS: ${currentCPS.toFixed(1)}`;
-        clickCounts = 0;
+        let totalCPS = manualClicksThisSecond;
+        if(autoClickActive) totalCPS += 10;
+        document.getElementById("cps-counter").textContent = Math.round(totalCPS) + " клик/с";
+        manualClicksThisSecond = 0;
     }, 1000);
 
-    /* АВТОКЛИК (10 раз в секунду по +1) */
+    // Автоклик (0.1 сек)
     setInterval(() => {
-        if (autoClickActive) {
-            addEnergy(1);
-            // Легкая пульсация формы при автоклике
-            shape.style.boxShadow = "0 0 50px #00f2ff";
-            setTimeout(() => shape.style.boxShadow = "0 0 30px #00f2ff", 50);
+        if(autoClickActive) {
+            energy += 1;
+            energyEl.textContent = energy;
+            if (energy >= 1000 && level === 0) {
+                level = 1;
+                shape.classList.add("line");
+                statusEl.textContent = "Line";
+                save();
+            }
         }
     }, 100);
 
-    /* МАТЕМАТИКА */
+    /* МАТЕМАТИКА (БУСТ 30 СЕКУНД) */
     function openMath() {
-        if(autoClickActive) return tg.showAlert("Буст уже активен!");
-        
-        const types = ['percent', 'root', 'hard'];
-        const type = types[Math.floor(Math.random()*3)];
-        
-        if (type === 'percent') {
-            let v = (Math.floor(Math.random()*5)+1)*40;
-            document.getElementById("math-question").textContent = `15% от числа ${v}`;
-            correctAnswer = (v * 15) / 100;
-        } else if (type === 'root') {
-            let roots = [121, 144, 169, 196, 225, 256, 400];
-            let r = roots[Math.floor(Math.random()*roots.length)];
-            document.getElementById("math-question").textContent = `Квадратный корень из ${r}`;
-            correctAnswer = Math.sqrt(r);
-        } else {
-            let a = Math.floor(Math.random()*10)+10, b = Math.floor(Math.random()*5)+2;
-            document.getElementById("math-question").textContent = `(${a} * ${b}) - 7`;
-            correctAnswer = (a * b) - 7;
-        }
-
-        mathInput.textContent = "";
+        if(autoClickActive) return;
+        let a = Math.floor(Math.random()*20)+10, b = Math.floor(Math.random()*10)+2;
+        document.getElementById("math-question").textContent = `${a} * ${b} - 5 = ?`;
+        correctAnswer = (a * b) - 5;
+        document.getElementById("math-input").textContent = "";
         document.getElementById("math-overlay").style.display = "flex";
     }
 
-    function press(key) {
-        if (key === 'C') mathInput.textContent = "";
-        else if (mathInput.textContent.length < 7) mathInput.textContent += key;
-        tg.HapticFeedback.impactOccurred("light");
+    function press(v) {
+        if(v==='C') document.getElementById("math-input").textContent = "";
+        else document.getElementById("math-input").textContent += v;
     }
 
     function checkAnswer() {
-        if (parseFloat(mathInput.textContent) === correctAnswer) {
+        if(parseInt(document.getElementById("math-input").textContent) === correctAnswer) {
             document.getElementById("math-overlay").style.display = "none";
             startBoost();
         } else {
-            tg.showAlert("Неверно! Попробуй другой пример.");
+            tg.showAlert("Ошибка!");
             openMath();
         }
     }
 
     function startBoost() {
         autoClickActive = true;
-        let timeLeft = 60;
+        let timeLeft = 30; // 30 секунд
         const timerEl = document.getElementById("timer");
         timerEl.style.display = "block";
-        
-        let bInterval = setInterval(() => {
+        let tint = setInterval(() => {
             timeLeft--;
-            let m = Math.floor(timeLeft/60), s = timeLeft%60;
-            timerEl.textContent = `BOOST: ${m}:${s<10?'0'+s:s}`;
+            timerEl.textContent = `БУСТ: 00:${timeLeft < 10 ? '0'+timeLeft : timeLeft}`;
             if(timeLeft <= 0) {
-                clearInterval(bInterval);
+                clearInterval(tint);
                 autoClickActive = false;
                 timerEl.style.display = "none";
             }
         }, 1000);
     }
 
-    /* FIREBASE: РЕЙТИНГ И СОХРАНЕНИЕ */
     function save() {
         const user = tg.initDataUnsafe?.user;
         if(user) {
             db.ref('users/' + user.id).update({
                 n: user.first_name || "Unknown",
-                s: Math.floor(energy),
+                s: energy,
                 l: level
             });
         }
@@ -239,13 +238,13 @@
             snap.forEach(s => players.push(s.val()));
             players.sort((a,b) => b.s - a.s);
             document.getElementById("list").innerHTML = players.map((p,i) => 
-                `<div>${i+1}. ${p.n.slice(0,8)}: ${p.s}</div>`
+                `<div>${i+1}. ${p.n.slice(0,6)}: ${p.s}</div>`
             ).join('');
         });
     }
 
     loadLeaderboard();
-    setInterval(save, 10000);
+    setInterval(save, 5000); // Сохранение каждые 5 сек
 </script>
 </body>
 </html>
